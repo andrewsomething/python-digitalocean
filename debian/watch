@@ -1,0 +1,3 @@
+version=3
+opts=filenamemangle=s/.+\/v?(\d\S*)\.tar\.gz/python-digitalocean-$1\.tar\.gz/ \
+  https://github.com/koalalorenzo/python-digitalocean/tags .*/v?(\d\S*)\.tar\.gz

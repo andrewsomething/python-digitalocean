@@ -1,0 +1,5 @@
+python-digitalocean (0.7-0~andrewsomething1) trusty; urgency=low
+
+  * Initial release as Debian package.
+
+ -- Andrew Starr-Bochicchio <a.starr.b@gmail.com>  Sat, 12 Apr 2014 11:19:37 -0400

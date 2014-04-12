@@ -1,0 +1,29 @@
+Source: python-digitalocean
+Section: python
+Priority: optional
+Maintainer: Andrew Starr-Bochicchio <a.starr.b@gmail.com>
+Build-Depends: debhelper (>= 9), dh-python, python-all (>= 2.6.6-3~)
+Standards-Version: 3.9.5
+X-Python-Version: >= 2.6
+Homepage: https://github.com/koalalorenzo/python-digitalocean
+Vcs-Git: https://github.com/andrewsomething/python-digitalocean
+Vcs-Browser: https://github.com/andrewsomething/python-digitalocean
+
+Package: python-digitalocean
+Architecture: any
+Depends: ${python:Depends}, ${misc:Depends}
+Description: provides easy access to digitalocean.com APIs
+ python-digitalocean support all the features provided via digitalocean.com
+ APIs, such as:
+ .
+  - Get user's Droplets
+  - Get user's Images (Snapshot and Backups)
+  - Get public Images
+  - Get Droplet's event status
+  - Create and Remove a Droplet
+  - Resize a Droplet
+  - Shutdown, restart and boot a Droplet
+  - Power off, power on and "power cycle" a Droplet
+  - Perform Snapshot
+  - Enable/Disable automatic Backups
+  - Restore root password of a Droplet
