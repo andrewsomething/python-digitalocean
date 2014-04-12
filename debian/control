@@ -2,7 +2,10 @@ Source: python-digitalocean
 Section: python
 Priority: optional
 Maintainer: Andrew Starr-Bochicchio <a.starr.b@gmail.com>
-Build-Depends: debhelper (>= 9), dh-python, python-all (>= 2.6.6-3~)
+Build-Depends: debhelper (>= 9),
+               dh-python,
+               python-all (>= 2.6.6-3~),
+               python-setuptools
 Standards-Version: 3.9.5
 X-Python-Version: >= 2.6
 Homepage: https://github.com/koalalorenzo/python-digitalocean
@@ -11,7 +14,7 @@ Vcs-Browser: https://github.com/andrewsomething/python-digitalocean
 
 Package: python-digitalocean
 Architecture: any
-Depends: ${python:Depends}, ${misc:Depends}
+Depends: ${misc:Depends}, ${python:Depends}
 Description: provides easy access to digitalocean.com APIs
  python-digitalocean support all the features provided via digitalocean.com
  APIs, such as:
