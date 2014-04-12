@@ -1,8 +1,8 @@
-python-digitalocean (0.7-0~andrewsomething2) UNRELEASED; urgency=medium
+python-digitalocean (0.7-0~andrewsomething2) trusty; urgency=medium
 
   * Add python-setuptools as build-dep.
 
- -- Andrew Starr-Bochicchio <a.starr.b@gmail.com>  Sat, 12 Apr 2014 12:33:44 -0400
+ -- Andrew Starr-Bochicchio <a.starr.b@gmail.com>  Sat, 12 Apr 2014 12:34:16 -0400
 
 python-digitalocean (0.7-0~andrewsomething1) trusty; urgency=low
 
