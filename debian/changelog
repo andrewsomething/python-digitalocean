@@ -1,3 +1,9 @@
+python-digitalocean (0.7-0~andrewsomething3) UNRELEASED; urgency=medium
+
+  * debian/control: Change to arch all.
+
+ -- Andrew Starr-Bochicchio <a.starr.b@gmail.com>  Sun, 13 Apr 2014 18:52:06 -0400
+
 python-digitalocean (0.7-0~andrewsomething2) trusty; urgency=medium
 
   * Add python-setuptools as build-dep.

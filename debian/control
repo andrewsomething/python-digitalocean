@@ -13,7 +13,7 @@ Vcs-Git: https://github.com/andrewsomething/python-digitalocean
 Vcs-Browser: https://github.com/andrewsomething/python-digitalocean
 
 Package: python-digitalocean
-Architecture: any
+Architecture: all
 Depends: ${misc:Depends}, ${python:Depends}
 Description: provides easy access to digitalocean.com APIs
  python-digitalocean support all the features provided via digitalocean.com
