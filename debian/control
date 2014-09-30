@@ -15,6 +15,7 @@ Vcs-Browser: https://github.com/andrewsomething/python-digitalocean
 Package: python-digitalocean
 Architecture: all
 Depends: ${misc:Depends}, ${python:Depends}
+Breaks: digitalocean-indicator (<= 0.1.1)
 Description: provides easy access to digitalocean.com APIs
  python-digitalocean support all the features provided via digitalocean.com
  APIs, such as:
