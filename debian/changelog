@@ -2,6 +2,7 @@ python-digitalocean (1.0.2-0~andrewsomething1) UNRELEASED; urgency=medium
 
   * New upstream release.
    - Support DigitalOcean APIv2.
+  * Don't run tests at build time as they require network access. 
 
  -- Andrew Starr-Bochicchio <a.starr.b@gmail.com>  Mon, 29 Sep 2014 20:50:32 -0400
 
