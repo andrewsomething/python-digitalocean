@@ -1,34 +1,56 @@
 import requests
+from .baseapi import BaseAPI
 
-class Image(object):
-    def __init__(self, client_id="", api_key=""):
-        self.client_id = client_id
-        self.api_key = api_key
-
-        self.name = None
+class Image(BaseAPI):
+    def __init__(self, *args, **kwargs):
         self.id = None
+        self.name = None
         self.distribution = None
+        self.slug = None
+        self.public = None
+        self.regions = []
+        self.created_at = None
 
-    def __call_api(self, path, params=dict()):
-        payload = {'client_id': self.client_id, 'api_key': self.api_key}
-        payload.update(params)
-        r = requests.get("https://api.digitalocean.com/v1/images/%s%s" % ( self.id, path ), params=payload)
-        data = r.json()
-        self.call_response = data
-        if data['status'] != "OK":
-            msg = [data[m] for m in ("message", "error_message", "status") if m in data][0]
-            raise Exception(msg)
+        super(Image, self).__init__(*args, **kwargs)
 
-        return data
+    def load(self):
+        data = self.get_data("images/%s" % self.id)
+        image_dict = data['image']
 
-    def Destroy(self):
+        #Setting the attribute values
+        for attr in image_dict.keys():
+            setattr(self,attr,image_dict[attr])
+
+        return self
+
+    def destroy(self):
         """
             Destroy the image
         """
-        self.__call_api("/destroy/")
+        return self.get_data(
+            "images/%s/" % self.id,
+            type="DELETE",
+        )
 
-    def transfer(self, new_region_id):
+    def transfer(self, new_region_slug):
         """
             Transfer the image
         """
-        self.__call_api("/transfer/", {"region_id": new_region_id})
+        return self.get_data(
+            "images/%s/actions/" % self.id,
+            type="POST",
+            params={"type": "transfer", "region": new_region_slug}
+        )
+
+    def rename(self, new_name):
+        """
+            Rename an image
+        """
+        return self.get_data(
+            "images/%s" % self.id,
+            type="PUT",
+            params={"name": new_name}
+        )
+
+    def __str__(self):
+        return "%s %s %s" % (self.id, self.name, self.distribution)

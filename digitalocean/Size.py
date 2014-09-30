@@ -1,12 +1,17 @@
-class Size(object):
-    def __init__(self, client_id="", api_key=""):
-        self.client_id = client_id
-        self.api_key = api_key
+from .baseapi import BaseAPI
 
-        self.name = None
-        self.id = None
+class Size(BaseAPI):
+    def __init__(self, *args, **kwargs):
+        self.slug = None
         self.memory = None
-        self.cpu = None
+        self.vcpus = None
         self.disk = None
-        self.cost_per_hour = None
-        self.cost_per_month = None
+        self.transfer = None
+        self.price_monthly = None
+        self.price_hourly = None
+        self.regions = []
+
+        super(Size, self).__init__(*args, **kwargs)
+
+    def __str__(self):
+        return "%s" % (self.slug)
