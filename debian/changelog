@@ -1,3 +1,11 @@
+python-digitalocean (1.5-0~andrewsomething1) vivid; urgency=medium
+
+  * New upstream release.
+  * Build-depend on python-pytest and python-responses.
+  * Run test suite on build.
+
+ -- Andrew Starr-Bochicchio <a.starr.b@gmail.com>  Sat, 09 May 2015 13:26:53 -0400
+
 python-digitalocean (1.0.2-0~andrewsomething1) trusty; urgency=medium
 
   * New upstream release.

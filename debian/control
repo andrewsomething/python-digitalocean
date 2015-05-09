@@ -5,8 +5,10 @@ Maintainer: Andrew Starr-Bochicchio <a.starr.b@gmail.com>
 Build-Depends: debhelper (>= 9),
                dh-python,
                python-all (>= 2.6.6-3~),
-               python-setuptools
-Standards-Version: 3.9.5
+               python-setuptools,
+               python-pytest,
+               python-responses
+Standards-Version: 3.9.6
 X-Python-Version: >= 2.6
 Homepage: https://github.com/koalalorenzo/python-digitalocean
 Vcs-Git: https://github.com/andrewsomething/python-digitalocean
