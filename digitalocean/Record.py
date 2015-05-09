@@ -1,5 +1,6 @@
-import requests
-from .baseapi import BaseAPI
+# -*- coding: utf-8 -*-
+from .baseapi import BaseAPI, POST, DELETE, PUT
+
 
 class Record(BaseAPI):
     def __init__(self, domain_name=None, *args, **kwargs):
@@ -14,22 +15,31 @@ class Record(BaseAPI):
 
         super(Record, self).__init__(*args, **kwargs)
 
+    @classmethod
+    def get_object(cls, api_token, domain, record_id):
+        """
+            Class method that will return a Record object by ID and the domain.
+        """
+        record = cls(token=api_token, domain=domain, id=record_id)
+        record.load()
+        return record
+
     def create(self):
         """
             Create a record for a domain
         """
         input_params = {
-                "type": self.type,
-                "data": self.data,
-                "name": self.name,
-                "priority": self.priority,
-                "port": self.port,
-                "weight": self.weight
-            }
+            "type": self.type,
+            "data": self.data,
+            "name": self.name,
+            "priority": self.priority,
+            "port": self.port,
+            "weight": self.weight
+        }
 
         data = self.get_data(
-            "domains/%s/records/%s" % (self.domain, self.id),
-            type="POST",
+            "domains/%s/records" % (self.domain),
+            type=POST,
             params=input_params,
         )
 
@@ -42,7 +52,7 @@ class Record(BaseAPI):
         """
         return self.get_data(
             "domains/%s/records/%s" % (self.domain, self.id),
-            type="DELETE",
+            type=DELETE,
         )
 
     def save(self):
@@ -59,7 +69,7 @@ class Record(BaseAPI):
         }
         return self.get_data(
             "domains/%s/records/%s" % (self.domain, self.id),
-            type="PUT",
+            type=PUT,
             params=data
         )
 
@@ -69,9 +79,9 @@ class Record(BaseAPI):
         if record:
             record = record[u'domain_record']
 
-            #Setting the attribute values
+            # Setting the attribute values
             for attr in record.keys():
-                setattr(self,attr,record[attr])
+                setattr(self, attr, record[attr])
 
     def __str__(self):
         return "%s %s" % (self.id, self.domain)

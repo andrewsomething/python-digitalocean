@@ -7,20 +7,22 @@ except ImportError:
     use_setuptools()
     from setuptools import setup
 
-long_description = """python-digitalocean is a python package that provide easy access to digitalocean.com APIs to manage droplets, images and more."""
+long_description = """This library provides easy access to Digital Ocean APIs to deploy droplets, images and more."""
 
 if os.path.isfile("README.md"):
     with open('README.md') as file:
         long_description = file.read()
 
-setup(name='python-digitalocean',
-      version='1.0.2',
-      description='digitalocean.com API to manage Droplets and Images',
-      author='Lorenzo Setale ( http://who.is.lorenzo.setale.me/? )',
-      author_email='koalalorenzo@gmail.com',
-      url='https://github.com/koalalorenzo/python-digitalocean',
-      packages=['digitalocean'],
-      install_requires=['requests'],
-      test_suite='digitalocean.tests',
-      long_description=long_description
-     )
+setup(
+    name='python-digitalocean',
+    version='1.5',
+    description='digitalocean.com API to manage Droplets and Images',
+    author='Lorenzo Setale ( http://who.is.lorenzo.setale.me/? )',
+    author_email='koalalorenzo@gmail.com',
+    url='https://github.com/koalalorenzo/python-digitalocean',
+    packages=['digitalocean'],
+    install_requires=['requests'],
+    test_suite='digitalocean.tests',
+    license='LGPL v3',
+    long_description=long_description
+)
