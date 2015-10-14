@@ -343,7 +343,11 @@ class Droplet(BaseAPI):
         """
             Destroy the droplet
 
-            Returns dict
+            Optional Args:
+                return_dict - bool : Return a dict when True (default),
+                    otherwise return an Action.
+
+            Returns dict or Action
         """
         return self.get_data("droplets/%s" % self.id, type=DELETE)
 
