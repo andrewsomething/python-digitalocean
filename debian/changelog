@@ -1,3 +1,9 @@
+python-digitalocean (1.6-0~andrewsomething1) vivid; urgency=medium
+
+  * New upstream release. 
+
+ -- Andrew Starr-Bochicchio <a.starr.b@gmail.com>  Tue, 13 Oct 2015 21:04:55 -0400
+
 python-digitalocean (1.5-0~andrewsomething1) vivid; urgency=medium
 
   * New upstream release.
