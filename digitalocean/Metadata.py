@@ -2,7 +2,7 @@
 import requests
 try:
     from urlparse import urljoin
-except ImportError:
+except:
     from urllib.parse import urljoin
 
 from .baseapi import BaseAPI
@@ -25,7 +25,8 @@ class Metadata(BaseAPI):
             Customized version of get_data to directly get the data without
             using the authentication method.
         """
-        url = urljoin(self.end_point, url)
+        if "https" not in url:
+            url = urljoin(self.end_point, url)
 
         response = requests.get(url, headers=headers, params=params)
 

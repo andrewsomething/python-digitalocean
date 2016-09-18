@@ -34,7 +34,6 @@ class Droplet(BaseAPI):
         ipv6: bool - True if ipv6 enabled
         private_networking: bool - True if private networking enabled
         user_data: str - arbitrary data to pass to droplet
-        volumes: [str] - list of blockstorage volumes
 
     Attributes returned by API:
         id: int - droplet id
@@ -57,7 +56,6 @@ class Droplet(BaseAPI):
         private_ip_address: str - private ip address
         ip_v6_address: [str] - list of ipv6 addresses assigned
         end_point: str - url of api endpoint used
-        volume_ids: [str] - list of blockstorage volumes
     """
 
     def __init__(self, *args, **kwargs):
@@ -88,7 +86,6 @@ class Droplet(BaseAPI):
         self.ipv6 = None
         self.private_networking = None
         self.user_data = None
-        self.volumes = []
 
         # This will load also the values passed
         super(Droplet, self).__init__(*args, **kwargs)
@@ -400,11 +397,7 @@ class Droplet(BaseAPI):
         """
             Destroy the droplet
 
-            Optional Args:
-                return_dict - bool : Return a dict when True (default),
-                    otherwise return an Action.
-
-            Returns dict or Action
+            Returns dict
         """
         return self.get_data("droplets/%s" % self.id, type=DELETE)
 
@@ -547,7 +540,6 @@ class Droplet(BaseAPI):
             "backups": bool(self.backups),
             "ipv6": bool(self.ipv6),
             "private_networking": bool(self.private_networking),
-            "volumes": self.volumes,
         }
 
         if self.user_data:
