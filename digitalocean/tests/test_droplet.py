@@ -40,6 +40,9 @@ class TestDroplet(BaseTest):
         self.assertEqual(d.memory, 512)
         self.assertEqual(d.vcpus, 1)
         self.assertEqual(d.disk, 20)
+        self.assertEqual(d.backups, False)
+        self.assertEqual(d.ipv6, True)
+        self.assertEqual(d.private_networking, False)
         self.assertEqual(d.region['slug'], "nyc3")
         self.assertEqual(d.status, "active")
         self.assertEqual(d.image['slug'], "ubuntu-14-04-x64")
@@ -527,6 +530,27 @@ class TestDroplet(BaseTest):
         self.assertEqual(response.resource_type, "droplet")
 
     @responses.activate
+    def test_enable_backups(self):
+        data = self.load_from_file('droplet_actions/enable_backups.json')
+
+        responses.add(responses.POST, self.actions_url,
+                      body=data,
+                      status=201,
+                      content_type='application/json')
+
+        response = self.droplet.enable_backups()
+
+        self.assertEqual(responses.calls[0].request.url,
+                         self.actions_url)
+        self.assertEqual(json.loads(responses.calls[0].request.body),
+                         {"type": "enable_backups"})
+        self.assertEqual(response['action']['id'], 54321)
+        self.assertEqual(response['action']['status'], "in-progress")
+        self.assertEqual(response['action']['type'], "enable_backups")
+        self.assertEqual(response['action']['resource_id'], 12345)
+        self.assertEqual(response['action']['resource_type'], "droplet")
+
+    @responses.activate
     def test_disable_backups(self):
         data = self.load_from_file('droplet_actions/disable_backups.json')
 
@@ -784,9 +808,47 @@ class TestDroplet(BaseTest):
             {u"name": u"example.com", u"region": u"nyc3",
              u"user_data": u"Some user data.", u"ipv6": True,
              u"private_networking": True, u"backups": True,
-             u"image": u"ubuntu-14-04-x64", u"size": u"512mb", u"ssh_keys": []})
+             u"image": u"ubuntu-14-04-x64", u"size": u"512mb", u"ssh_keys": [],
+             u"volumes": []})
         self.assertEqual(droplet.id, 3164494)
         self.assertEqual(droplet.action_ids, [36805096])
+
+    @responses.activate
+    def test_create_multiple_no_keys(self):
+        data = self.load_from_file('droplet_actions/create_multiple.json')
+
+        responses.add(responses.POST, self.base_url + "droplets",
+                      body=data,
+                      status=202,
+                      content_type='application/json')
+
+
+        droplets = digitalocean.Droplet.create_multiple(names=["example.com",
+                                                               "example2.com"],
+                                                        size_slug="512mb",
+                                                        image="ubuntu-14-04-x64",
+                                                        region="nyc3",
+                                                        backups=True,
+                                                        ipv6=True,
+                                                        private_networking=True,
+                                                        user_data="Some user data.",
+                                                        token=self.token)
+        self.assert_url_query_equal(responses.calls[0].request.url,
+                                    self.base_url + "droplets")
+        self.assertEqual(len(droplets), 2)
+        self.assertEqual(droplets[0].id, 3164494)
+        self.assertEqual(droplets[1].id, 3164495)
+        self.assertEqual(droplets[0].action_ids, [36805096])
+        self.assertEqual(droplets[1].action_ids, [36805096])
+
+        self.maxDiff = None
+        self.assertEqual(
+            json.loads(responses.calls[0].request.body),
+            {u"names": [u"example.com", u"example2.com"], u"region": u"nyc3",
+             u"user_data": u"Some user data.", u"ipv6": True,
+             u"private_networking": True, u"backups": True,
+             u"image": u"ubuntu-14-04-x64", u"size": u"512mb"})
+
 
     @responses.activate
     def test_get_actions(self):

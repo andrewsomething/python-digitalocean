@@ -8,10 +8,11 @@ class Image(BaseAPI):
         self.name = None
         self.distribution = None
         self.slug = None
-        self.min_size = None
+        self.min_disk_size = None
         self.public = None
         self.regions = []
         self.created_at = None
+        self.size_gigabytes = None
 
         super(Image, self).__init__(*args, **kwargs)
 
@@ -62,3 +63,6 @@ class Image(BaseAPI):
 
     def __str__(self):
         return "%s %s %s" % (self.id, self.name, self.distribution)
+
+    def __repr__(self):
+        return "< %s %s %s >" % (self.id, self.distribution, self.name)

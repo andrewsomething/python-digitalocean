@@ -34,6 +34,7 @@ class Droplet(BaseAPI):
         ipv6: bool - True if ipv6 enabled
         private_networking: bool - True if private networking enabled
         user_data: str - arbitrary data to pass to droplet
+        volumes: [str] - list of blockstorage volumes
 
     Attributes returned by API:
         id: int - droplet id
@@ -51,13 +52,12 @@ class Droplet(BaseAPI):
         action_ids: [int] - list of ids of actions
         features: [str] - list of enabled features. e.g.
                   [u'private_networking', u'virtio']
-        min_size: str - minumum size of droplet that can bew created from a
-                   snapshot of this droplet
         image: dict - details of image used to create this droplet
         ip_address: str - public ip addresses
         private_ip_address: str - private ip address
         ip_v6_address: [str] - list of ipv6 addresses assigned
         end_point: str - url of api endpoint used
+        volume_ids: [str] - list of blockstorage volumes
     """
 
     def __init__(self, *args, **kwargs):
@@ -88,6 +88,7 @@ class Droplet(BaseAPI):
         self.ipv6 = None
         self.private_networking = None
         self.user_data = None
+        self.volumes = []
 
         # This will load also the values passed
         super(Droplet, self).__init__(*args, **kwargs)
@@ -103,6 +104,42 @@ class Droplet(BaseAPI):
         droplet = cls(token=api_token, id=droplet_id)
         droplet.load()
         return droplet
+
+    @classmethod
+    def create_multiple(*args, **kwargs):
+        api = BaseAPI(token=kwargs.get("token"))
+
+        data = {
+            "names": kwargs.get("names"),
+            "size": kwargs.get("size_slug") or kwargs.get("size"),
+            "image": kwargs.get("image"),
+            "region": kwargs.get("region"),
+            "backups": bool(kwargs.get("backups")),
+            "ipv6": bool(kwargs.get("ipv6")),
+            "private_networking": bool(kwargs.get("private_networking")),
+        }
+
+        if kwargs.get("ssh_keys"):
+            data["ssh_keys"] = Droplet.__get_ssh_keys_id_or_fingerprint(
+                    kwargs["ssh_keys"], kwargs.get("token"),
+                    kwargs["names"][0])
+
+        if kwargs.get("user_data"):
+            data["user_data"] = kwargs["user_data"]
+
+        droplets = []
+
+        data = api.get_data("droplets", type=POST, params=data)
+
+        if data:
+            action_ids = [data["links"]["actions"][0]["id"]]
+            for droplet_json in data["droplets"]:
+                droplet_json["token"] = kwargs["token"]
+                droplet = Droplet(**droplet_json)
+                droplet.action_ids = action_ids
+                droplets.append(droplet)
+
+        return droplets
 
     def __check_actions_in_data(self, data):
         # reloading actions if actions is provided.
@@ -138,6 +175,20 @@ class Droplet(BaseAPI):
                 self.ip_address = net['ip_address']
         if self.networks['v6']:
             self.ip_v6_address = self.networks['v6'][0]['ip_address']
+
+            if "backups" in self.features:
+                self.backups = True
+            else:
+                self.backups = False
+            if "ipv6" in self.features:
+                self.ipv6 = True
+            else:
+                self.ipv6 = False
+            if "private_networking" in self.features:
+                self.private_networking = True
+            else:
+                self.private_networking = False
+
         return self
 
     def _perform_action(self, params, return_dict=True):
@@ -321,11 +372,17 @@ class Droplet(BaseAPI):
             return_dict
         )
 
-    def enable_backups(self):
+    def enable_backups(self, return_dict=True):
         """
-            Enable automatic backups (Not yet implemented in APIv2)
+            Enable automatic backups
+
+            Optional Args:
+                return_dict - bool : Return a dict when True (default),
+                    otherwise return an Action.
+
+            Returns dict or Action
         """
-        print("Not yet implemented in APIv2")
+        return self._perform_action({'type': 'enable_backups'}, return_dict)
 
     def disable_backups(self, return_dict=True):
         """
@@ -415,14 +472,15 @@ class Droplet(BaseAPI):
             return_dict
         )
 
-    def __get_ssh_keys_id_or_fingerprint(self):
+    @staticmethod
+    def __get_ssh_keys_id_or_fingerprint(ssh_keys, token, name):
         """
             Check and return a list of SSH key IDs or fingerprints according
             to DigitalOcean's API. This method is used to check and create a
             droplet with the correct SSH keys.
         """
         ssh_keys_id = list()
-        for ssh_key in self.ssh_keys:
+        for ssh_key in ssh_keys:
             if type(ssh_key) in [int, type(2 ** 64)]:
                 ssh_keys_id.append(int(ssh_key))
 
@@ -443,12 +501,12 @@ class Droplet(BaseAPI):
 
                 else:
                     key = SSHKey()
-                    key.token = self.token
+                    key.token = token
                     results = key.load_by_pub_key(ssh_key)
 
                     if results is None:
                         key.public_key = ssh_key
-                        key.name = "SSH Key %s" % self.name
+                        key.name = "SSH Key %s" % name
                         key.create()
                     else:
                         key = results
@@ -476,15 +534,20 @@ class Droplet(BaseAPI):
         if not self.size_slug and self.size:
             self.size_slug = self.size
 
+        ssh_keys_id = Droplet.__get_ssh_keys_id_or_fingerprint(self.ssh_keys,
+                                                               self.token,
+                                                               self.name)
+
         data = {
             "name": self.name,
             "size": self.size_slug,
             "image": self.image,
             "region": self.region,
-            "ssh_keys": self.__get_ssh_keys_id_or_fingerprint(),
+            "ssh_keys": ssh_keys_id,
             "backups": bool(self.backups),
             "ipv6": bool(self.ipv6),
             "private_networking": bool(self.private_networking),
+            "volumes": self.volumes,
         }
 
         if self.user_data:

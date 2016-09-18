@@ -1,5 +1,11 @@
 # -*- coding: utf-8 -*-
+try:
+    from urlparse import urlparse, parse_qs
+except ImportError:
+    from urllib.parse import urlparse, parse_qs
+
 from .baseapi import BaseAPI
+from .baseapi import GET
 from .Droplet import Droplet
 from .Region import Region
 from .Size import Size
@@ -8,7 +14,8 @@ from .Domain import Domain
 from .SSHKey import SSHKey
 from .Action import Action
 from .Account import Account
-
+from .FloatingIP import FloatingIP
+from .Volume import Volume
 
 class Manager(BaseAPI):
     def __init__(self, *args, **kwargs):
@@ -30,9 +37,10 @@ class Manager(BaseAPI):
 
         kwargs["params"] = params
         data = super(Manager, self).get_data(*args, **kwargs)
-        unpaged_data = self.__deal_with_pagination(args[0], data, params)
-
-        return unpaged_data
+        if kwargs.get('type') == GET:
+            return self.__deal_with_pagination(args[0], data, params)
+        else:
+            return data
 
     def __deal_with_pagination(self, url, data, params):
         """
@@ -41,7 +49,8 @@ class Manager(BaseAPI):
             than one page)
         """
         try:
-            pages = data['links']['pages']['last'].split('=')[-1]
+            lastpage_url = data['links']['pages']['last']
+            pages = parse_qs(urlparse(lastpage_url).query)['page'][0]
             key, values = data.popitem()
             for page in range(2, int(pages) + 1):
                 params.update({'page': page})
@@ -92,7 +101,22 @@ class Manager(BaseAPI):
                     droplet.ip_address = net['ip_address']
             if droplet.networks['v6']:
                 droplet.ip_v6_address = droplet.networks['v6'][0]['ip_address']
+
+            if "backups" in droplet.features:
+                droplet.backups = True
+            else:
+                droplet.backups = False
+            if "ipv6" in droplet.features:
+                droplet.ipv6 = True
+            else:
+                droplet.ipv6 = False
+            if "private_networking" in droplet.features:
+                droplet.private_networking = True
+            else:
+                droplet.private_networking = False
+
             droplets.append(droplet)
+
         return droplets
 
     def get_droplet(self, droplet_id):
@@ -225,6 +249,42 @@ class Manager(BaseAPI):
             Return an Action object by a specific ID.
         """
         return Action.get_object(api_token=self.token, action_id=action_id)
+
+    def get_all_floating_ips(self):
+        """
+            This function returns a list of FloatingIP objects.
+        """
+        data = self.get_data("floating_ips")
+        floating_ips = list()
+        for jsoned in data['floating_ips']:
+            floating_ip = FloatingIP(**jsoned)
+            floating_ip.token = self.token
+            floating_ips.append(floating_ip)
+        return floating_ips
+
+    def get_floating_ip(self, ip):
+        """
+            Returns a of FloatingIP object by its IP address.
+        """
+        return FloatingIP.get_object(api_token=self.token, ip=ip)
+
+    def get_all_volumes(self):
+        """
+            This function returns a list of Volume objects.
+        """
+        data = self.get_data("volumes")
+        volumes = list()
+        for jsoned in data['volumes']:
+            volume = Volume(**jsoned)
+            volume.token = self.token
+            volumes.append(volume)
+        return volumes
+
+    def get_volume(self, volume_id):
+        """
+            Returns a Volume object by its ID.
+        """
+        return Volume.get_object(api_token=self.token, volume_id=volume_id)
 
     def __str__(self):
         return "%s" % (self.token)

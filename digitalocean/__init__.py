@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """digitalocean API to manage droplets"""
 
-__version__ = "1.6"
+__version__ = "1.9.0"
 __author__ = "Lorenzo Setale ( http://who.is.lorenzo.setale.me/? )"
 __author_email__ = "koalalorenzo@gmail.com"
 __license__ = "LGPL v3"
@@ -18,4 +18,6 @@ from .Domain import Domain
 from .Record import Record
 from .SSHKey import SSHKey
 from .Kernel import Kernel
+from .FloatingIP import FloatingIP
+from .Volume import Volume
 from .baseapi import Error, TokenError, DataReadError
