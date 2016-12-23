@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 try:
     from urlparse import urlparse, parse_qs
-except:
+except ImportError:
     from urllib.parse import urlparse, parse_qs
 
 from .baseapi import BaseAPI
@@ -37,8 +37,14 @@ class Manager(BaseAPI):
 
         kwargs["params"] = params
         data = super(Manager, self).get_data(*args, **kwargs)
-        if kwargs.get('type') == GET:
-            return self.__deal_with_pagination(args[0], data, params)
+        # if there are more elements available (total) than the elements per 
+        # page, try to deal with pagination. Note: Breaking the logic on
+        # multiple pages,
+        if 'meta' in data and 'total' in data['meta']:
+            if data['meta']['total'] > params['per_page']:
+                return self.__deal_with_pagination(args[0], data, params)
+            else:
+                return data
         else:
             return data
 
@@ -84,11 +90,16 @@ class Manager(BaseAPI):
             regions.append(region)
         return regions
 
-    def get_all_droplets(self):
+    def get_all_droplets(self, tag_name=None):
         """
             This function returns a list of Droplet object.
         """
-        data = self.get_data("droplets/")
+        if tag_name:
+            params = {"tag_name": tag_name}
+            data = self.get_data("droplets/", params=params)
+        else:
+            data = self.get_data("droplets/")
+
         droplets = list()
         for jsoned in data['droplets']:
             droplet = Droplet(**jsoned)
@@ -287,4 +298,4 @@ class Manager(BaseAPI):
         return Volume.get_object(api_token=self.token, volume_id=volume_id)
 
     def __str__(self):
-        return "%s" % (self.token)
+        return "<Manager>"

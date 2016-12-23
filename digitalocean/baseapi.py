@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
+import os
 import json
 import logging
 import requests
 try:
     from urlparse import urljoin
-except:
+except ImportError:
     from urllib.parse import urljoin
 
 
@@ -12,6 +13,7 @@ GET = 'GET'
 POST = 'POST'
 DELETE = 'DELETE'
 PUT = 'PUT'
+REQUEST_TIMEOUT_ENV_VAR = 'PYTHON_DIGITALOCEAN_REQUEST_TIMEOUT_SEC'
 
 
 class Error(Exception):
@@ -28,6 +30,10 @@ class DataReadError(Error):
 
 
 class JSONReadError(Error):
+    pass
+
+
+class NotFoundError(Error):
     pass
 
 
@@ -59,8 +65,7 @@ class BaseAPI(object):
         if not self.token:
             raise TokenError("No token provided. Please use a valid token")
 
-        if "https" not in url:
-            url = urljoin(self.end_point, url)
+        url = urljoin(self.end_point, url)
 
         # lookup table to find out the apropriate requests method,
         # headers and payload type (json or query parameters)
@@ -73,20 +78,40 @@ class BaseAPI(object):
             PUT: (requests.put, {'Content-type': 'application/json'}, 'data',
                   json_dumps),
             DELETE: (requests.delete,
-                     {'content-type': 'application/x-www-form-urlencoded'},
-                     'params', identity),
+                     {'content-type': 'application/json'},
+                     'data', json_dumps),
         }
 
         requests_method, headers, payload, transform = lookup[type]
         headers.update({'Authorization': 'Bearer ' + self.token})
         kwargs = {'headers': headers, payload: transform(params)}
 
+        timeout = self.get_timeout()
+        if timeout:
+            kwargs['timeout'] = timeout
+
         # remove token from log
         headers_str = str(headers).replace(self.token.strip(), 'TOKEN')
-        self._log.debug('%s %s %s:%s %s' %
-                        (type, url, payload, params, headers_str))
+        self._log.debug('%s %s %s:%s %s %s' %
+                        (type, url, payload, params, headers_str, timeout))
 
         return requests_method(url, **kwargs)
+
+    def get_timeout(self):
+        """
+            Checks if any timeout for the requests to DigitalOcean is required.
+            To set a timeout, use the REQUEST_TIMEOUT_ENV_VAR environment
+            variable.
+        """
+        timeout_str = os.environ.get(REQUEST_TIMEOUT_ENV_VAR)
+        if timeout_str:
+            try:
+                return float(timeout_str)
+            except:
+                self._log.error('Failed parsing the request read timeout of '
+                                '"%s". Please use a valid float number!' %
+                                        timeout_str)
+        return None
 
     def get_data(self, url, type=GET, params=None):
         """
@@ -100,6 +125,9 @@ class BaseAPI(object):
         req = self.__perform_request(url, type, params)
         if req.status_code == 204:
             return True
+
+        if req.status_code == 404:
+            raise NotFoundError()
 
         try:
             data = req.json()
@@ -115,7 +143,10 @@ class BaseAPI(object):
         return data
 
     def __str__(self):
-        return "%s" % self.token
+        return "<%s>" % self.__class__.__name__
 
     def __unicode__(self):
         return u"%s" % self.__str__()
+
+    def __repr__(self):
+        return str(self)
