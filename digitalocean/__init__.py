@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """digitalocean API to manage droplets"""
 
-__version__ = "1.10.1"
+__version__ = "1.11"
 __author__ = "Lorenzo Setale ( http://who.is.lorenzo.setale.me/? )"
 __author_email__ = "koalalorenzo@gmail.com"
 __license__ = "LGPL v3"
@@ -22,3 +22,6 @@ from .FloatingIP import FloatingIP
 from .Volume import Volume
 from .baseapi import Error, TokenError, DataReadError
 from .Tag import Tag
+from .LoadBalancer import LoadBalancer
+from .LoadBalancer import StickySesions, ForwardingRule, HealthCheck
+from .Certificate import Certificate

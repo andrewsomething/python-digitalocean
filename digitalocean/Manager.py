@@ -15,62 +15,15 @@ from .SSHKey import SSHKey
 from .Action import Action
 from .Account import Account
 from .FloatingIP import FloatingIP
+from .LoadBalancer import LoadBalancer
+from .LoadBalancer import StickySesions, HealthCheck, ForwardingRule
+from .Certificate import Certificate
 from .Volume import Volume
+
 
 class Manager(BaseAPI):
     def __init__(self, *args, **kwargs):
         super(Manager, self).__init__(*args, **kwargs)
-
-    def get_data(self, *args, **kwargs):
-        """
-            Customized version of get_data to perform __check_actions_in_data.
-
-            The default amount of elements per page defined is 200 as explained
-            here: https://github.com/koalalorenzo/python-digitalocean/pull/78
-        """
-        params = {}
-        if "params" in kwargs:
-            params = kwargs["params"]
-
-        if "per_page" not in params:
-            params["per_page"] = 200
-
-        kwargs["params"] = params
-        data = super(Manager, self).get_data(*args, **kwargs)
-        # if there are more elements available (total) than the elements per 
-        # page, try to deal with pagination. Note: Breaking the logic on
-        # multiple pages,
-        if 'meta' in data and 'total' in data['meta']:
-            if data['meta']['total'] > params['per_page']:
-                return self.__deal_with_pagination(args[0], data, params)
-            else:
-                return data
-        else:
-            return data
-
-    def __deal_with_pagination(self, url, data, params):
-        """
-            Perform multiple calls in order to have a full list of elements
-            when the API are "paginated". (content list is divided in more
-            than one page)
-        """
-        try:
-            lastpage_url = data['links']['pages']['last']
-            pages = parse_qs(urlparse(lastpage_url).query)['page'][0]
-            key, values = data.popitem()
-            for page in range(2, int(pages) + 1):
-                params.update({'page': page})
-                new_data = super(Manager, self).get_data(url, params=params)
-
-                more_values = list(new_data.values())[0]
-                for value in more_values:
-                    values.append(value)
-            data = {}
-            data[key] = values
-        except KeyError:  # No pages.
-            pass
-
-        return data
 
     def get_account(self):
         """
@@ -94,11 +47,11 @@ class Manager(BaseAPI):
         """
             This function returns a list of Droplet object.
         """
+        params = dict()
         if tag_name:
-            params = {"tag_name": tag_name}
-            data = self.get_data("droplets/", params=params)
-        else:
-            data = self.get_data("droplets/")
+            params["tag_name"] = tag_name
+
+        data = self.get_data("droplets/", params=params)
 
         droplets = list()
         for jsoned in data['droplets']:
@@ -278,6 +231,56 @@ class Manager(BaseAPI):
             Returns a of FloatingIP object by its IP address.
         """
         return FloatingIP.get_object(api_token=self.token, ip=ip)
+
+    def get_all_load_balancers(self):
+        """
+            Returns a list of Load Balancer objects.
+        """
+        data = self.get_data("load_balancers")
+
+        load_balancers = list()
+        for jsoned in data['load_balancers']:
+            load_balancer = LoadBalancer(**jsoned)
+            load_balancer.token = self.token
+            load_balancer.health_check = HealthCheck(**jsoned['health_check'])
+            load_balancer.sticky_sessions = StickySesions(**jsoned['sticky_sessions'])
+            forwarding_rules = list()
+            for rule in jsoned['forwarding_rules']:
+                forwarding_rules.append(ForwardingRule(**rule))
+            load_balancer.forwarding_rules = forwarding_rules
+            load_balancers.append(load_balancer)
+        return load_balancers
+
+    def get_load_balancer(self, id):
+        """
+            Returns a Load Balancer object by its ID.
+
+            Args:
+                id (str): Load Balancer ID
+        """
+        return LoadBalancer.get_object(api_token=self.token, id=id)
+
+    def get_certificate(self, id):
+        """
+            Returns a Certificate object by its ID.
+
+            Args:
+                id (str): Certificate ID
+        """
+        return Certificate.get_object(api_token=self.token, cert_id=id)
+
+    def get_all_certificates(self):
+        """
+            This function returns a list of Certificate objects.
+        """
+        data = self.get_data("certificates")
+        certificates = list()
+        for jsoned in data['certificates']:
+            cert = Certificate(**jsoned)
+            cert.token = self.token
+            certificates.append(cert)
+
+        return certificates
 
     def get_all_volumes(self):
         """
