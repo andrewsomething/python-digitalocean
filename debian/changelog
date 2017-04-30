@@ -1,3 +1,9 @@
+python-digitalocean (1.11-0~andrewsomething1) zesty; urgency=medium
+
+  * New upstream release.
+
+ -- Andrew Starr-Bochicchio <a.starr.b@gmail.com>  Sun, 30 Apr 2017 15:55:06 -0400
+
 python-digitalocean (1.10.1-0~andrewsomething1) yakkety; urgency=medium
 
   * New upstream release.
