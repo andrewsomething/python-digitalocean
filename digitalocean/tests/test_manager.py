@@ -631,6 +631,51 @@ class TestManager(BaseTest):
         self.assertEqual(f.tags, [])
         self.assertEqual(f.pending_changes, [])
 
+    @responses.activate
+    def test_get_vpc(self):
+        data = self.load_from_file('vpcs/single.json')
+        vpc_id = "953d698c-dg84-11e8-80bc-3cfdfeaae000"
+        url = self.base_url + 'vpcs/' + vpc_id
+
+        responses.add(responses.GET,
+                      url,
+                      body=data,
+                      status=200,
+                      content_type='application/json')
+
+        vpc = self.manager.get_vpc(vpc_id)
+
+        self.assert_get_url_equal(responses.calls[0].request.url, url)
+        self.assertEqual(vpc.id, vpc_id)
+        self.assertEqual(vpc.name, 'default-nyc3')
+        self.assertEqual(vpc.region, 'nyc3')
+        self.assertEqual(vpc.created_at, '2019-02-19T18:48:45Z')
+        self.assertEqual(vpc.default, True)
+
+    @responses.activate
+    def test_get_all_vpcs(self):
+        data = self.load_from_file('vpcs/list.json')
+
+        url = self.base_url + "vpcs"
+        responses.add(responses.GET,
+                      url,
+                      body=data,
+                      status=200,
+                      content_type='application/json')
+
+        vpcs = self.manager.get_all_vpcs()
+
+        self.assertEqual(vpcs[0].id, 'e10dcc6a-dc84-11e8-b2qf-3cfdfea9f160')
+        self.assertEqual(vpcs[0].name, 'default-nyc3')
+        self.assertEqual(vpcs[0].created_at, '2019-03-08T19:05:45Z')
+        self.assertEqual(vpcs[0].region, 'nyc3')
+        self.assertEqual(vpcs[0].default, True)
+        self.assertEqual(vpcs[1].id, 'fc4b2c54-dc84-11e8-8s13-3cfdfea9f220')
+        self.assertEqual(vpcs[1].name, 'new-nyc3')
+        self.assertEqual(vpcs[1].created_at, '2019-02-24T16:18:26Z')
+        self.assertEqual(vpcs[1].region, 'nyc3')
+        self.assertEqual(vpcs[1].default, False)
+
 
 if __name__ == '__main__':
     unittest.main()
