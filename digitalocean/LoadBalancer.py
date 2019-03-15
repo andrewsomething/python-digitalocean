@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from .baseapi import BaseAPI, GET, POST, DELETE
+from .baseapi import BaseAPI, GET, POST, PUT, DELETE
 
 
 class StickySesions(object):
@@ -14,12 +14,13 @@ class StickySesions(object):
         cookie_ttl_seconds (int, optional): The number of seconds until the
             cookie expires
     """
-    def __init__(self, type='none', cookie_name='DO_LB',
-                 cookie_ttl_seconds=300):
+    def __init__(self, type='none', cookie_name='', cookie_ttl_seconds=None):
         self.type = type
         if type is 'cookies':
-            self.cookie_name = cookie_name
-            self.cookie_ttl_seconds = cookie_ttl_seconds
+            self.cookie_name = 'DO-LB'
+            self.cookie_ttl_seconds = 300
+        self.cookie_name = cookie_name
+        self.cookie_ttl_seconds = cookie_ttl_seconds
 
 
 class ForwardingRule(object):
@@ -124,6 +125,8 @@ class LoadBalancer(BaseAPI):
         tag (str): A string representing a DigitalOcean Droplet tag
         status (string): An indication the current state of the LoadBalancer
         created_at (str): The date and time when the LoadBalancer was created
+        vpc_uuid (str): ID of a Load Balancer in which the Droplet will be
+            created
     """
     def __init__(self, *args, **kwargs):
         self.id = None
@@ -138,6 +141,7 @@ class LoadBalancer(BaseAPI):
         self.tag = None
         self.status = None
         self.created_at = None
+        self.vpc_uuid = None
 
         super(LoadBalancer, self).__init__(*args, **kwargs)
 
@@ -205,12 +209,15 @@ class LoadBalancer(BaseAPI):
                 exclusive with 'tag')
             tag (str): A string representing a DigitalOcean Droplet tag
                 (mutually exclusive with 'droplet_ids')
+            vpc_uuid (str): ID of a Load Balancer in which the Droplet will be
+                created
         """
         rules_dict = [rule.__dict__ for rule in self.forwarding_rules]
 
         params = {'name': self.name, 'region': self.region,
                   'forwarding_rules': rules_dict,
-                  'redirect_http_to_https': self.redirect_http_to_https}
+                  'redirect_http_to_https': self.redirect_http_to_https,
+                  'vpc_uuid': self.vpc_uuid}
 
         if self.droplet_ids and self.tag:
             raise ValueError('droplet_ids and tag are mutually exclusive args')
@@ -239,8 +246,39 @@ class LoadBalancer(BaseAPI):
             self.droplet_ids = data['load_balancer']['droplet_ids']
             self.status = data['load_balancer']['status']
             self.created_at = data['load_balancer']['created_at']
+            self.vpc_uuid = data['load_balancer']['vpc_uuid']
 
         return self
+
+    def save(self):
+        """
+        Save the LoadBalancer
+        """
+        forwarding_rules = [rule.__dict__ for rule in self.forwarding_rules]
+
+        data = {
+            'name': self.name,
+            'region': self.region['slug'],
+            'forwarding_rules': forwarding_rules,
+            'redirect_http_to_https': self.redirect_http_to_https,
+            'vpc_uuid': self.vpc_uuid
+        }
+
+        if self.tag:
+            data['tag'] = self.tag
+        else:
+            data['droplet_ids'] = self.droplet_ids
+
+        if self.algorithm:
+            data["algorithm"] = self.algorithm
+        if self.health_check:
+            data['health_check'] = self.health_check.__dict__
+        if self.sticky_sessions:
+            data['sticky_sessions'] = self.sticky_sessions.__dict__
+
+        return self.get_data("load_balancers/%s/" % self.id,
+                             type=PUT,
+                             params=data)
 
     def destroy(self):
         """

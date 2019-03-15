@@ -37,17 +37,10 @@ class Tag(BaseAPI):
 
         params = {"name": self.name}
 
-        output = self.get_data("tags/", type="POST", params=params)
+        output = self.get_data("tags", type="POST", params=params)
         if output:
             self.name = output['tag']['name']
             self.resources = output['tag']['resources']
-
-
-    def update_tag(self, name):
-        query = {"name": name}
-        updated = self.get_data("tags/%s" % self.name, type="PUT", params=query)
-        if updated:
-            self.name = updated["tag"]["name"]
 
 
     def delete(self):
@@ -97,10 +90,16 @@ class Tag(BaseAPI):
         for a_droplet in data:
             res = {}
 
-            if isinstance(a_droplet, str) or isinstance(a_droplet, unicode) or isinstance(a_droplet, int):
-                res = {"resource_id": a_droplet, "resource_type": "droplet"}
+            try:
+                if isinstance(a_droplet, unicode):
+                    res = {"resource_id": a_droplet, "resource_type": "droplet"}
+            except NameError:
+                pass
+
+            if isinstance(a_droplet, str) or isinstance(a_droplet, int):
+                res = {"resource_id": str(a_droplet), "resource_type": "droplet"}
             elif isinstance(a_droplet, Droplet):
-                res = {"resource_id": a_droplet.id, "resource_type": "droplet"}
+                res = {"resource_id": str(a_droplet.id), "resource_type": "droplet"}
 
             if len(res) > 0:
                 resources.append(res)

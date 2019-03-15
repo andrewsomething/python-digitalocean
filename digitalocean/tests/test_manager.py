@@ -1,3 +1,4 @@
+import json
 import unittest
 import responses
 import digitalocean
@@ -10,6 +11,9 @@ class TestManager(BaseTest):
     def setUp(self):
         super(TestManager, self).setUp()
         self.manager = digitalocean.Manager(token=self.token)
+        self.image = digitalocean.Image(
+            id=449676856, slug='testslug', token=self.token
+        )
 
     @responses.activate
     def test_get_account(self):
@@ -102,7 +106,6 @@ class TestManager(BaseTest):
                       status=200,
                       content_type="application/json")
 
-
         manager = digitalocean.Manager(token=self.token)
         droplets = manager.get_all_droplets(tag_name="awesome")
 
@@ -148,7 +151,7 @@ class TestManager(BaseTest):
         self.assertEqual(region.token, self.token)
         self.assertEqual(region.name, 'New York')
         self.assertEqual(region.slug, 'nyc1')
-        self.assertEqual(region.sizes,["1gb", "512mb"])
+        self.assertEqual(region.sizes, ["1gb", "512mb"])
         self.assertEqual(region.features, ['virtio',
                                            'private_networking',
                                            'backups',
@@ -176,6 +179,43 @@ class TestManager(BaseTest):
         self.assertEqual(size.price_monthly, 5.0)
         self.assertEqual(size.transfer, 1)
         self.assertEqual(size.regions, ["nyc1", "ams1", "sfo1"])
+
+    @responses.activate
+    def test_get_image(self):
+        """Test get image by id."""
+        data = self.load_from_file('images/single.json')
+        url = "{}images/{}".format(self.base_url, self.image.id)
+
+        responses.add(responses.GET,
+                      url,
+                      body=data,
+                      status=200,
+                      content_type='application/json')
+
+        self.image.load()
+
+        self.assert_get_url_equal(responses.calls[0].request.url, url)
+        self.assertEqual(self.image.id, 449676856)
+        self.assertEqual(self.image.slug, 'testslug')
+        self.assertEqual(self.image.name, 'My Snapshot')
+
+    @responses.activate
+    def test_get_image_by_slug(self):
+        """Test get image by slug."""
+        data = self.load_from_file('images/single.json')
+        url = "{}images/{}".format(self.base_url, self.image.slug)
+        responses.add(responses.GET,
+                      url,
+                      body=data,
+                      status=200,
+                      content_type='application/json')
+
+        self.image.load(use_slug=True)
+
+        self.assert_get_url_equal(responses.calls[0].request.url, url)
+        self.assertEqual(self.image.id, 449676856)
+        self.assertEqual(self.image.slug, 'testslug')
+        self.assertEqual(self.image.name, 'My Snapshot')
 
     @responses.activate
     def test_get_all_images(self):
@@ -246,8 +286,10 @@ class TestManager(BaseTest):
         self.assertEqual(image.distribution, 'Ubuntu')
         self.assertEqual(image.regions, ['nyc1', 'nyc3'])
         self.assertEqual(image.created_at, "2014-08-18T16:35:40Z")
-        self.assert_url_query_equal(responses.calls[0].request.url,
-                                    'https://api.digitalocean.com/v2/images/?private=true&per_page=200')
+        self.assert_url_query_equal(
+            responses.calls[0].request.url,
+            'https://api.digitalocean.com/v2/images/?private=true&per_page=200'
+        )
 
     @responses.activate
     def test_get_distro_images(self):
@@ -425,6 +467,17 @@ class TestManager(BaseTest):
             'dfcc9f57d86bf58e321c2c6c31c7a971be244ac7')
         self.assertEqual(certs[0].not_after, '2017-02-22T00:23:00Z')
         self.assertEqual(certs[0].created_at, '2017-02-08T16:02:37Z')
+        self.assertEqual(certs[0].type, 'custom')
+        self.assertEqual(certs[0].state, 'verified')
+
+        self.assertEqual(certs[1].id, 'ba9b9c18-6c59-46c2-99df-70da170a42ba')
+        self.assertEqual(certs[1].name, 'web-cert-02')
+        self.assertEqual(certs[1].sha1_fingerprint,
+            '479c82b5c63cb6d3e6fac4624d58a33b267e166c')
+        self.assertEqual(certs[1].not_after, '2018-06-07T17:44:12Z')
+        self.assertEqual(certs[1].created_at, '2018-03-09T18:44:11Z')
+        self.assertEqual(certs[1].type, 'lets_encrypt')
+        self.assertEqual(certs[1].state, 'pending')
 
     @responses.activate
     def test_get_all_volumes(self):
@@ -441,6 +494,188 @@ class TestManager(BaseTest):
 
         self.assertEqual(volumes[0].id, "506f78a4-e098-11e5-ad9f-000f53306ae1")
         self.assertEqual(volumes[0].region['slug'], 'nyc1')
+        self.assertEqual(volumes[0].filesystem_type, "ext4")
+        self.assertEqual(len(volumes), 2)
+
+    @responses.activate
+    def test_get_per_region_volumes(self):
+        data = json.loads(self.load_from_file('volumes/all.json'))
+        data["volumes"] = [
+            volume for volume in data["volumes"]
+            if volume["region"]["slug"] == "nyc1"]
+
+        url = self.base_url + "volumes?region=nyc1&per_page=200"
+        responses.add(responses.GET,
+                      url,
+                      body=json.dumps(data),
+                      status=200,
+                      content_type='application/json')
+        volumes = self.manager.get_all_volumes("nyc1")
+
+        self.assertEqual(volumes[0].id, "506f78a4-e098-11e5-ad9f-000f53306ae1")
+        self.assertEqual(volumes[0].region['slug'], 'nyc1')
+        self.assertEqual(len(volumes), 1)
+
+    @responses.activate
+    def test_get_all_tags(self):
+        data = self.load_from_file('tags/all.json')
+
+        url = self.base_url + 'tags'
+        responses.add(responses.GET, url,
+                      body=data,
+                      status=200,
+                      content_type='application/json')
+
+        all_tags = self.manager.get_all_tags()
+
+        self.assertEqual(len(all_tags), 1)
+        self.assertEqual(all_tags[0].name, 'test')
+        self.assertEqual(all_tags[0].resources['droplets']['count'], 0)
+
+    @responses.activate
+    def test_get_all_snapshots(self):
+        data = self.load_from_file('snapshots/all.json')
+
+        url = self.base_url + 'snapshots/'
+        responses.add(responses.GET, url,
+                      body=data,
+                      status=200,
+                      content_type='application/json')
+
+        all_snapshots = self.manager.get_all_snapshots()
+
+        self.assertEqual(len(all_snapshots), 1)
+        self.assertEqual(all_snapshots[0].name, 'test')
+        self.assertEqual(all_snapshots[0].id, 6372321)
+        self.assertEqual(all_snapshots[0].size_gigabytes, 1.42)
+        self.assertEqual(all_snapshots[0].resource_type, 'droplet')
+        self.assertEqual(len(all_snapshots[0].regions), 11)
+
+    @responses.activate
+    def test_get_droplet_snapshots(self):
+        data = self.load_from_file('snapshots/droplets.json')
+
+        url = self.base_url + 'snapshots?resource_type=droplet&per_page=200'
+        responses.add(responses.GET, url,
+                      match_querystring=True,
+                      body=data,
+                      status=200,
+                      content_type='application/json')
+
+        droplet_snapshots = self.manager.get_droplet_snapshots()
+
+        self.assertEqual(len(droplet_snapshots), 1)
+        self.assertEqual(droplet_snapshots[0].name, 'droplet-test')
+        self.assertEqual(droplet_snapshots[0].id, 19602538)
+        self.assertEqual(droplet_snapshots[0].min_disk_size, 20)
+        self.assertEqual(droplet_snapshots[0].size_gigabytes, 0.31)
+        self.assertEqual(droplet_snapshots[0].resource_type, 'droplet')
+        self.assertEqual(len(droplet_snapshots[0].regions), 12)
+
+    @responses.activate
+    def test_get_volume_snapshots(self):
+        data = self.load_from_file('snapshots/volumes.json')
+
+        url = self.base_url + 'snapshots?resource_type=volume&per_page=200'
+        responses.add(responses.GET, url,
+                      match_querystring=True,
+                      body=data,
+                      status=200,
+                      content_type='application/json')
+
+        volume_snapshots = self.manager.get_volume_snapshots()
+
+        self.assertEqual(len(volume_snapshots), 1)
+        self.assertEqual(volume_snapshots[0].name, 'volume-test')
+        self.assertEqual(
+            volume_snapshots[0].id, '4f60fc64-85d1-11e6-a004-000f53315871'
+        )
+        self.assertEqual(volume_snapshots[0].min_disk_size, 10)
+        self.assertEqual(volume_snapshots[0].size_gigabytes, 0)
+        self.assertEqual(volume_snapshots[0].resource_type, 'volume')
+        self.assertEqual(len(volume_snapshots[0].regions), 1)
+
+    @responses.activate
+    def test_get_firewalls(self):
+        data = self.load_from_file('firewalls/all.json')
+
+        url = self.base_url + "firewalls"
+        responses.add(responses.GET,
+                      url,
+                      body=data,
+                      status=200,
+                      content_type='application/json')
+
+        firewalls = self.manager.get_all_firewalls()
+        f = firewalls[0]
+
+        self.assert_get_url_equal(responses.calls[0].request.url, url)
+        self.assertEqual(f.id, "12345")
+        self.assertEqual(f.name, "firewall")
+        self.assertEqual(f.status, "succeeded")
+        self.assertEqual(f.inbound_rules[0].ports, "80")
+        self.assertEqual(f.inbound_rules[0].protocol, "tcp")
+        self.assertEqual(f.inbound_rules[0].sources.load_balancer_uids,
+                         ["12345"])
+        self.assertEqual(f.inbound_rules[0].sources.addresses, [])
+        self.assertEqual(f.inbound_rules[0].sources.tags, [])
+        self.assertEqual(f.outbound_rules[0].ports, "80")
+        self.assertEqual(f.outbound_rules[0].protocol, "tcp")
+        self.assertEqual(
+            f.outbound_rules[0].destinations.load_balancer_uids, [])
+        self.assertEqual(f.outbound_rules[0].destinations.addresses,
+                         ["0.0.0.0/0", "::/0"])
+        self.assertEqual(f.outbound_rules[0].destinations.tags, [])
+        self.assertEqual(f.created_at, "2017-05-23T21:24:00Z")
+        self.assertEqual(f.droplet_ids, [12345])
+        self.assertEqual(f.tags, [])
+        self.assertEqual(f.pending_changes, [])
+
+    @responses.activate
+    def test_get_vpc(self):
+        data = self.load_from_file('vpcs/single.json')
+        vpc_id = "953d698c-dg84-11e8-80bc-3cfdfeaae000"
+        url = self.base_url + 'vpcs/' + vpc_id
+
+        responses.add(responses.GET,
+                      url,
+                      body=data,
+                      status=200,
+                      content_type='application/json')
+
+        vpc = self.manager.get_vpc(vpc_id)
+
+        self.assert_get_url_equal(responses.calls[0].request.url, url)
+        self.assertEqual(vpc.id, vpc_id)
+        self.assertEqual(vpc.name, 'default-nyc3')
+        self.assertEqual(vpc.region, 'nyc3')
+        self.assertEqual(vpc.created_at, '2019-02-19T18:48:45Z')
+        self.assertEqual(vpc.default, True)
+
+    @responses.activate
+    def test_get_all_vpcs(self):
+        data = self.load_from_file('vpcs/list.json')
+
+        url = self.base_url + "vpcs"
+        responses.add(responses.GET,
+                      url,
+                      body=data,
+                      status=200,
+                      content_type='application/json')
+
+        vpcs = self.manager.get_all_vpcs()
+
+        self.assertEqual(vpcs[0].id, 'e10dcc6a-dc84-11e8-b2qf-3cfdfea9f160')
+        self.assertEqual(vpcs[0].name, 'default-nyc3')
+        self.assertEqual(vpcs[0].created_at, '2019-03-08T19:05:45Z')
+        self.assertEqual(vpcs[0].region, 'nyc3')
+        self.assertEqual(vpcs[0].default, True)
+        self.assertEqual(vpcs[1].id, 'fc4b2c54-dc84-11e8-8s13-3cfdfea9f220')
+        self.assertEqual(vpcs[1].name, 'new-nyc3')
+        self.assertEqual(vpcs[1].created_at, '2019-02-24T16:18:26Z')
+        self.assertEqual(vpcs[1].region, 'nyc3')
+        self.assertEqual(vpcs[1].default, False)
+
 
 if __name__ == '__main__':
     unittest.main()

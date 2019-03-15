@@ -3,6 +3,7 @@ import os
 import json
 import logging
 import requests
+from . import __name__, __version__
 try:
     import urlparse
 except ImportError:
@@ -13,6 +14,7 @@ GET = 'GET'
 POST = 'POST'
 DELETE = 'DELETE'
 PUT = 'PUT'
+PATCH = 'PATCH'
 REQUEST_TIMEOUT_ENV_VAR = 'PYTHON_DIGITALOCEAN_REQUEST_TIMEOUT_SEC'
 
 
@@ -52,6 +54,16 @@ class BaseAPI(object):
         for attr in kwargs.keys():
             setattr(self, attr, kwargs[attr])
 
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        # The logger is not pickleable due to using thread.lock
+        del state['_log']
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__ = state
+        self._log = logging.getLogger(__name__)
+
     def __perform_request(self, url, type=GET, params=None):
         """
             This method will perform the real request,
@@ -67,12 +79,14 @@ class BaseAPI(object):
 
         url = urlparse.urljoin(self.end_point, url)
 
-        # lookup table to find out the apropriate requests method,
+        # lookup table to find out the appropriate requests method,
         # headers and payload type (json or query parameters)
         identity = lambda x: x
         json_dumps = lambda x: json.dumps(x)
         lookup = {
             GET: (requests.get, {}, 'params', identity),
+            PATCH: (requests.patch, {'Content-type': 'application/json'},
+                    'data', json_dumps),
             POST: (requests.post, {'Content-type': 'application/json'}, 'data',
                    json_dumps),
             PUT: (requests.put, {'Content-type': 'application/json'}, 'data',
@@ -83,7 +97,12 @@ class BaseAPI(object):
         }
 
         requests_method, headers, payload, transform = lookup[type]
-        headers.update({'Authorization': 'Bearer ' + self.token})
+        agent = "{0}/{1} {2}/{3}".format('python-digitalocean',
+                                         __version__,
+                                         requests.__name__,
+                                         requests.__version__)
+        headers.update({'Authorization': 'Bearer ' + self.token,
+                        'User-Agent': agent})
         kwargs = {'headers': headers, payload: transform(params)}
 
         timeout = self.get_timeout()
@@ -106,7 +125,6 @@ class BaseAPI(object):
         all_data = data
         while data.get("links", {}).get("pages", {}).get("next"):
             url, query = data["links"]["pages"]["next"].split("?", 1)
-            print(params)
 
             # Merge the query parameters
             for key, value in urlparse.parse_qs(query).items():
@@ -122,6 +140,14 @@ class BaseAPI(object):
                     all_data[key] = value
 
         return all_data
+
+    def __init_ratelimit(self, headers):
+        # Add the account requests/hour limit
+        self.ratelimit_limit = headers.get('Ratelimit-Limit', None)
+        # Add the account requests remaining
+        self.ratelimit_remaining = headers.get('Ratelimit-Remaining', None)
+        # Add the account requests limit reset time
+        self.ratelimit_reset = headers.get('Ratelimit-Reset', None)
 
     def get_timeout(self):
         """
@@ -172,7 +198,10 @@ class BaseAPI(object):
             msg = [data[m] for m in ("id", "message") if m in data][1]
             raise DataReadError(msg)
 
-        # If there are more elements available (total) than the elements per 
+        # init request limits
+        self.__init_ratelimit(req.headers)
+
+        # If there are more elements available (total) than the elements per
         # page, try to deal with pagination. Note: Breaking the logic on
         # multiple pages,
         pages = data.get("links", {}).get("pages", {})

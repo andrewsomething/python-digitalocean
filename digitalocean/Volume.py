@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from .baseapi import BaseAPI, POST, DELETE
-
+from .Snapshot import Snapshot
 
 class Volume(BaseAPI):
     def __init__(self, *args, **kwargs):
@@ -11,6 +11,9 @@ class Volume(BaseAPI):
         self.description = None
         self.size_gigabytes = None
         self.created_at = None
+        self.snapshot_id = None
+        self.filesystem_type = None
+        self.filesystem_label = None
 
         super(Volume, self).__init__(*args, **kwargs)
 
@@ -44,6 +47,10 @@ class Volume(BaseAPI):
             name: string - a name for the volume
             region: string - slug identifier for the region
             size_gigabytes: int - size of the Block Storage volume in GiB
+            filesystem_type: string, optional - name of the filesystem type the
+                volume will be formated with ('ext4' or 'xfs')
+            filesystem_label: string, optional - the label to be applied to the
+                filesystem, only used in conjunction with filesystem_type
 
         Optional Args:
             description: string - text field to describe a volume
@@ -53,7 +60,46 @@ class Volume(BaseAPI):
                              params={'name': self.name,
                                      'region': self.region,
                                      'size_gigabytes': self.size_gigabytes,
-                                     'description': self.description})
+                                     'description': self.description,
+                                     'filesystem_type': self.filesystem_type,
+                                     'filesystem_label': self.filesystem_label
+                                     })
+
+        if data:
+            self.id = data['volume']['id']
+            self.created_at = data['volume']['created_at']
+
+        return self
+
+    def create_from_snapshot(self, *args, **kwargs):
+        """
+        Creates a Block Storage volume
+
+        Note: Every argument and parameter given to this method will be
+        assigned to the object.
+
+        Args:
+            name: string - a name for the volume
+            snapshot_id: string - unique identifier for the volume snapshot
+            size_gigabytes: int - size of the Block Storage volume in GiB
+            filesystem_type: string, optional - name of the filesystem type the
+                volume will be formated with ('ext4' or 'xfs')
+            filesystem_label: string, optional - the label to be applied to the
+                filesystem, only used in conjunction with filesystem_type
+
+        Optional Args:
+            description: string - text field to describe a volume
+        """
+        data = self.get_data('volumes/',
+                             type=POST,
+                             params={'name': self.name,
+                                     'snapshot_id': self.snapshot_id,
+                                     'region': self.region,
+                                     'size_gigabytes': self.size_gigabytes,
+                                     'description': self.description,
+                                     'filesystem_type': self.filesystem_type,
+                                     'filesystem_label': self.filesystem_label
+                                     })
 
         if data:
             self.id = data['volume']['id']
@@ -114,6 +160,35 @@ class Volume(BaseAPI):
                     "size_gigabytes": size_gigabytes,
                     "region": region}
         )
+
+    def snapshot(self, name):
+        """
+        Create a snapshot of the volume.
+
+        Args:
+            name: string - a human-readable name for the snapshot
+        """
+        return self.get_data(
+            "volumes/%s/snapshots/" % self.id,
+            type=POST,
+            params={"name": name}
+        )
+
+    def get_snapshots(self):
+        """
+        Retrieve the list of snapshots that have been created from a volume.
+
+        Args:
+        """
+        data = self.get_data("volumes/%s/snapshots/" % self.id)
+        snapshots = list()
+        for jsond in data[u'snapshots']:
+            snapshot = Snapshot(**jsond)
+            snapshot.token = self.token
+            snapshots.append(snapshot)
+
+        return snapshots
+
 
     def __str__(self):
         return "<Volume: %s %s %s>" % (self.id, self.name, self.size_gigabytes)

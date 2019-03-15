@@ -1,0 +1,9 @@
+{
+  "vpc": {
+    "id": "953d698c-dg84-11e8-80bc-3cfdfeaae000",
+    "name": "default-nyc3",
+    "region": "nyc3",
+    "created_at": "2019-02-19T18:48:45Z",
+    "default": true
+  }
+}

@@ -2,23 +2,26 @@
 try:
     from urlparse import urlparse, parse_qs
 except ImportError:
-    from urllib.parse import urlparse, parse_qs
+    from urllib.parse import urlparse, parse_qs                 # noqa
 
 from .baseapi import BaseAPI
-from .baseapi import GET
-from .Droplet import Droplet
-from .Region import Region
-from .Size import Size
-from .Image import Image
-from .Domain import Domain
-from .SSHKey import SSHKey
-from .Action import Action
 from .Account import Account
+from .Action import Action
+from .Certificate import Certificate
+from .Domain import Domain
+from .Droplet import Droplet
 from .FloatingIP import FloatingIP
+from .Firewall import Firewall, InboundRule, OutboundRule
+from .Image import Image
 from .LoadBalancer import LoadBalancer
 from .LoadBalancer import StickySesions, HealthCheck, ForwardingRule
-from .Certificate import Certificate
+from .Region import Region
+from .SSHKey import SSHKey
+from .Size import Size
+from .Snapshot import Snapshot
+from .Tag import Tag
 from .Volume import Volume
+from .VPC import VPC
 
 
 class Manager(BaseAPI):
@@ -126,11 +129,14 @@ class Manager(BaseAPI):
         images = self.get_images()
         return images
 
-    def get_image(self, image_id):
+    def get_image(self, image_id_or_slug):
         """
-            Return a Image by its ID.
+            Return a Image by its ID/Slug.
         """
-        return Image.get_object(api_token=self.token, image_id=image_id)
+        return Image.get_object(
+            api_token=self.token,
+            image_id_or_slug=image_id_or_slug,
+        )
 
     def get_my_images(self):
         """
@@ -162,7 +168,6 @@ class Manager(BaseAPI):
         images = self.get_images(type='distribution')
         return images
 
-
     def get_app_images(self):
         """
             This function returns a list of Image objectobjects representing
@@ -170,7 +175,6 @@ class Manager(BaseAPI):
         """
         images = self.get_images(type='application')
         return images
-
 
     def get_all_domains(self):
         """
@@ -207,6 +211,15 @@ class Manager(BaseAPI):
             Return a SSHKey object by its ID.
         """
         return SSHKey.get_object(api_token=self.token, ssh_key_id=ssh_key_id)
+
+    def get_all_tags(self):
+        """
+            This method returns a list of all tags.
+        """
+        data = self.get_data("tags")
+        return [
+            Tag(token=self.token, **tag) for tag in data['tags']
+        ]
 
     def get_action(self, action_id):
         """
@@ -282,11 +295,53 @@ class Manager(BaseAPI):
 
         return certificates
 
-    def get_all_volumes(self):
+    def get_snapshot(self, snapshot_id):
+        """
+            Return a Snapshot by its ID.
+        """
+        return Snapshot.get_object(
+            api_token=self.token, snapshot_id=snapshot_id
+        )
+
+    def get_all_snapshots(self):
+        """
+            This method returns a list of all Snapshots.
+        """
+        data = self.get_data("snapshots/")
+        return [
+            Snapshot(token=self.token, **snapshot)
+            for snapshot in data['snapshots']
+        ]
+
+    def get_droplet_snapshots(self):
+        """
+            This method returns a list of all Snapshots based on Droplets.
+        """
+        data = self.get_data("snapshots?resource_type=droplet")
+        return [
+            Snapshot(token=self.token, **snapshot)
+            for snapshot in data['snapshots']
+        ]
+
+    def get_volume_snapshots(self):
+        """
+            This method returns a list of all Snapshots based on volumes.
+        """
+        data = self.get_data("snapshots?resource_type=volume")
+        return [
+            Snapshot(token=self.token, **snapshot)
+            for snapshot in data['snapshots']
+        ]
+
+    def get_all_volumes(self, region=None):
         """
             This function returns a list of Volume objects.
         """
-        data = self.get_data("volumes")
+        if region:
+            url = "volumes?region={}".format(region)
+        else:
+            url = "volumes"
+        data = self.get_data(url)
         volumes = list()
         for jsoned in data['volumes']:
             volume = Volume(**jsoned)
@@ -299,6 +354,56 @@ class Manager(BaseAPI):
             Returns a Volume object by its ID.
         """
         return Volume.get_object(api_token=self.token, volume_id=volume_id)
+
+    def get_all_firewalls(self):
+        """
+            This function returns a list of Firewall objects.
+        """
+        data = self.get_data("firewalls")
+        firewalls = list()
+        for jsoned in data['firewalls']:
+            firewall = Firewall(**jsoned)
+            firewall.token = self.token
+            in_rules = list()
+            for rule in jsoned['inbound_rules']:
+                in_rules.append(InboundRule(**rule))
+            firewall.inbound_rules = in_rules
+            out_rules = list()
+            for rule in jsoned['outbound_rules']:
+                out_rules.append(OutboundRule(**rule))
+            firewall.outbound_rules = out_rules
+            firewalls.append(firewall)
+        return firewalls
+
+    def get_firewall(self, firewall_id):
+        """
+            Return a Firewall by its ID.
+        """
+        return Firewall.get_object(
+            api_token=self.token,
+            firewall_id=firewall_id,
+        )
+
+    def get_vpc(self, id):
+        """
+            Returns a VPC object by its ID.
+             Args:
+                id (str): The VPC's ID
+        """
+        return VPC.get_object(api_token=self.token, vpc_id=id)
+
+    def get_all_vpcs(self):
+        """
+            This function returns a list of VPC objects.
+        """
+        data = self.get_data("vpcs")
+        vpcs = list()
+        for jsoned in data['vpcs']:
+            vpc = VPC(**jsoned)
+            vpc.token = self.token
+            vpcs.append(vpc)
+
+        return vpcs
 
     def __str__(self):
         return "<Manager>"
